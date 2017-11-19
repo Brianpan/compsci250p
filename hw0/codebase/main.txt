@@ -1,0 +1,25 @@
+<<<<<<<<<<<<<<<<<<<<< start of script: main.txt >>>>>>>>>>>>>>>>>>>>>>>>>>>
+make[1]: Entering directory `/home/porenp/compsci250p/hw0'
+echo ----------------removing executable program main--------------------
+----------------removing executable program main--------------------
+/bin/rm main
+make[1]: Leaving directory `/home/porenp/compsci250p/hw0'
+make[1]: Entering directory `/home/porenp/compsci250p/hw0'
+echo -----------compiling main.ccp to create executable program main----------------
+-----------compiling main.ccp to create executable program main----------------
+g++ -ggdb -std=c++11 main.cpp -o main
+make[1]: Leaving directory `/home/porenp/compsci250p/hw0'
+<<<<<<<<<<<<<<<<<<<<< File main.cpp >>>>>>>>>>>>>>>>>>>>>>>>>>>
+#include <iostream>
+using namespace std;
+int main()
+{
+	int i = 40;
+	cout<<"Hello World"<<endl;
+	return 0;
+}
+<<<<<<<<<<<<<<<<<<<<< output of main >>>>>>>>>>>>>>>>>>>>>>>>>>>
+Hello World
+<<<<<<<<<<<<<<<<<<<<< output of valgrind main >>>>>>>>>>>>>>>>>>>>>>>>>>>
+Hello World
+<<<<<<<<<<<<<<<<<<<<< end of script: main.txt >>>>>>>>>>>>>>>>>>>>>>>>>>>

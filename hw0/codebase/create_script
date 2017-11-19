@@ -1,0 +1,22 @@
+#! /bin/bash
+
+if [ $# != 2 ]; then
+    echo $#
+    echo "Usage: $0 sourcefile executablefile"
+    exit
+fi
+sourcefile=$1
+executablefile=$2
+
+bash > ${executablefile}.txt << END 
+    echo "<<<<<<<<<<<<<<<<<<<<<" start of script: ${executablefile}.txt ">>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    make clean
+    make $executablefile
+    echo "<<<<<<<<<<<<<<<<<<<<<" File $sourcefile ">>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    cat $sourcefile
+    echo "<<<<<<<<<<<<<<<<<<<<<" output of $executablefile ">>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    $executablefile
+    echo "<<<<<<<<<<<<<<<<<<<<<" output of valgrind $executablefile ">>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    valgrind $executablefile
+    echo "<<<<<<<<<<<<<<<<<<<<<" end of script: ${executablefile}.txt ">>>>>>>>>>>>>>>>>>>>>>>>>>>"
+END
