@@ -128,6 +128,9 @@ int main(int argc, char* argv[])
 					else
 					{
 						cacheLine[cacheIndex].push_back(cacheTag);
+						string tmp = cacheLine[cacheIndex][0];
+						cacheLine[cacheIndex][0] = cacheLine[cacheIndex][1];
+						cacheLine[cacheIndex][1] = tmp;
 						cacheMiss += 1;
 					}
 					
@@ -151,11 +154,8 @@ int main(int argc, char* argv[])
 					else
 					{
 						// remove 1 & swap
-						cacheLine[cacheIndex][1] = cacheTag;
-						// swapx
-						string tmp = cacheLine[cacheIndex][0];
-						cacheLine[cacheIndex][0] = cacheLine[cacheIndex][1];
-						cacheLine[cacheIndex][1] = tmp;
+						cacheLine[cacheIndex][1] = cacheLine[cacheIndex][0];
+						cacheLine[cacheIndex][0] = cacheTag;
 
 						cacheMiss += 1;
 					}
