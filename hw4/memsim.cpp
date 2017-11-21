@@ -93,6 +93,7 @@ int main(int argc, char* argv[])
 	int writeCount = 0;
 	int cacheHit = 	0;
 	int cacheMiss = 0;
+	char *c = (char*) malloc(1);
 
 	fstream fh( argv[1], ios_base::in );
 	if( fh )
@@ -107,9 +108,46 @@ int main(int argc, char* argv[])
 			cacheAddress = result[0];
 			accessType = result[1];
 
-			cacheTag = getCacheTag(cacheAddress);
-			cacheIndex = getCacheIndex(cacheAddress);
+			// cacheTag = getCacheTag(cacheAddress);
+			// cacheIndex = getCacheIndex(cacheAddress);
 			
+			string cacheIndex = "";
+			// hex to int
+			
+			memcpy( c, &cacheAddress[2], 1);
+			int number = (int)strtol( (const char*)c, NULL, 16);
+			
+			string binary;
+			int mask = 1;
+
+			// int to binary string
+			for(int i=0; i<4;i++)
+			{
+				if(mask&number)
+					binary = "1" + binary;
+				else
+					binary = "0" + binary;
+				mask<<=1;
+			}
+
+			cacheIndex += binary[3];
+			for(int i=3;i<7;i++)
+			{
+				cacheIndex += cacheAddress[i];
+			}
+
+			// cacheTag
+			string cacheTag = "";
+			cacheTag += cacheAddress[0];
+			cacheTag += cacheAddress[1];
+			// fetch left 3 bits
+			for(int i= 0; i<3;i++)
+			{
+				cacheTag += binary[i];
+			}
+			
+
+			// cout<<cacheAddress<<" "<<cacheTag<<" "<<cacheIndex<<endl;
 			// check cache is hit or not 
 			auto isFoundIter = cacheLine.find(cacheIndex);
 			if( isFoundIter == cacheLine.end() )
@@ -181,5 +219,6 @@ int main(int argc, char* argv[])
 	cout<<"Cache hits: "<<cacheHit<<endl;
 	cout<<"Cache misses: "<<cacheMiss<<endl;
 
+	free(c);
 	return 0; 
 }
