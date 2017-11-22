@@ -5,74 +5,11 @@
 #include <vector>
 #include <regex>
 #include <unordered_map>
+#include <bitset>
+#include <sstream>
+#include <math.h>
+
 using namespace std;
-
-string getCacheTag(string cacheAddress)
-{
-	string cacheTag = "";
-	cacheTag += cacheAddress[0];
-	cacheTag += cacheAddress[1];
-	
-	// hex to int
-	char *c = (char*) malloc(1);
-	memcpy( c, &cacheAddress[2], 1);
-	int number = (int)strtol( (const char*)c, NULL, 16);
-	
-	string binary;
-	int mask = 1;
-
-	// int to binary string
-	for(int i=0; i<4;i++)
-	{
-		if(mask&number)
-			binary = "1" + binary;
-		else
-			binary = "0" + binary;
-		mask<<=1;
-
-	}
-
-	// fetch left 3 bits
-	for(int i= 0; i<3;i++)
-	{
-		cacheTag += binary[i];
-	}
-
-	free(c);
-	return cacheTag;
-}
-
-string getCacheIndex(string cacheAddress)
-{
-	string cacheIndex = "";
-	// hex to int
-	char *c = (char*) malloc(1);
-	memcpy( c, &cacheAddress[2], 1);
-	int number = (int)strtol( (const char*)c, NULL, 16);
-	
-	string binary;
-	int mask = 1;
-
-	// int to binary string
-	for(int i=0; i<4;i++)
-	{
-		if(mask&number)
-			binary = "1" + binary;
-		else
-			binary = "0" + binary;
-		mask<<=1;
-	}
-
-	cacheIndex += binary[3];
-
-	for(int i=3;i<7;i++)
-	{
-		cacheIndex += cacheAddress[i];
-	}
-
-	free(c);
-	return cacheIndex;
-}
 
 int main(int argc, char* argv[])
 {
@@ -82,7 +19,12 @@ int main(int argc, char* argv[])
 		cout<<"Param is wrong"<<endl;
 	}
 
-	unordered_map<string,vector<string>> cacheLine;
+	unsigned indexSize = pow(2, 18);
+	
+	unsigned long cacheLine[indexSize][2];
+	bool validBits[indexSize][2];
+	memset(validBits, 0, sizeof(bool)*indexSize*2 );
+
 	string accessType;
 	string cacheAddress;
 	string cacheTag;
@@ -93,112 +35,73 @@ int main(int argc, char* argv[])
 	int writeCount = 0;
 	int cacheHit = 	0;
 	int cacheMiss = 0;
-	char *c = (char*) malloc(1);
 
 	fstream fh( argv[1], ios_base::in );
+	regex whiteSpace("\\s+");
+
 	if( fh )
 	{
 		for( string line; getline( fh, line); )
 		{
-			regex whiteSpace("\\s+");
 			vector<string> result{
 				sregex_token_iterator( line.begin(), line.end(), whiteSpace, -1), {}
 			};
 			
 			cacheAddress = result[0];
 			accessType = result[1];
-
-			// cacheTag = getCacheTag(cacheAddress);
-			// cacheIndex = getCacheIndex(cacheAddress);
 			
-			string cacheIndex = "";
-			// hex to int
-			
-			memcpy( c, &cacheAddress[2], 1);
-			int number = (int)strtol( (const char*)c, NULL, 16);
-			
-			string binary;
-			int mask = 1;
+			stringstream ss;
+			ss<<hex<<cacheAddress;
+			unsigned n;
+			ss>>n;
+			bitset<32>b(n);
 
-			// int to binary string
-			for(int i=0; i<4;i++)
-			{
-				if(mask&number)
-					binary = "1" + binary;
-				else
-					binary = "0" + binary;
-				mask<<=1;
-			}
+			auto cacheIndexBit = bitset<17>( (b>>4).to_ulong() );
+			auto cacheTagBit = bitset<11>( (b>>21).to_ulong() );
 
-			cacheIndex += binary[3];
-			for(int i=3;i<7;i++)
-			{
-				cacheIndex += cacheAddress[i];
-			}
+			unsigned long cacheIndex = cacheIndexBit.to_ulong();
+			unsigned long cacheTag = cacheTagBit.to_ulong();
 
-			// cacheTag
-			string cacheTag = "";
-			cacheTag += cacheAddress[0];
-			cacheTag += cacheAddress[1];
-			// fetch left 3 bits
-			for(int i= 0; i<3;i++)
-			{
-				cacheTag += binary[i];
-			}
-			
-
-			// cout<<cacheAddress<<" "<<cacheTag<<" "<<cacheIndex<<endl;
 			// check cache is hit or not 
-			auto isFoundIter = cacheLine.find(cacheIndex);
-			if( isFoundIter == cacheLine.end() )
+			if( validBits[cacheIndex][0] == 0 )
 			{
-				cacheLine[cacheIndex].push_back(cacheTag);
+				cacheLine[cacheIndex][0] = cacheTag;
 				cacheMiss += 1;
+				validBits[cacheIndex][0] = 1;
 			}
 			else
 			{
-				if(cacheLine[cacheIndex].size() == 1)
+				if( cacheLine[cacheIndex][0] == cacheTag )
 				{
-					if( cacheLine[cacheIndex][0] == cacheTag )
-					{
-						cacheHit += 1;
-					}
-					else
-					{
-						cacheLine[cacheIndex].push_back(cacheTag);
-						string tmp = cacheLine[cacheIndex][0];
-						cacheLine[cacheIndex][0] = cacheLine[cacheIndex][1];
-						cacheLine[cacheIndex][1] = tmp;
-						cacheMiss += 1;
-					}
-					
+					cacheHit += 1;
 				}
 				else
 				{
-					// cache line is full
-					if( cacheLine[cacheIndex][0] == cacheTag )
+					if(validBits[cacheIndex][1] == 0)
 					{
-						cacheHit += 1;
+						cacheLine[cacheIndex][1] = cacheTag;
+						cacheMiss += 1;
+						validBits[cacheIndex][1] = 1;
 					}
-					else if( cacheLine[cacheIndex][1] == cacheTag )
-					{
-						// should swap
-						string tmp = cacheLine[cacheIndex][0];
-						cacheLine[cacheIndex][0] = cacheLine[cacheIndex][1];
-						cacheLine[cacheIndex][1] = tmp;
-						cacheHit += 1;
-					}
-					//cache miss
 					else
 					{
-						// remove 1 & swap
-						cacheLine[cacheIndex][1] = cacheLine[cacheIndex][0];
-						cacheLine[cacheIndex][0] = cacheTag;
-
-						cacheMiss += 1;
+						auto tmp = cacheLine[cacheIndex][0];
+						if(cacheLine[cacheIndex][1] == cacheTag)
+						{
+							cacheHit += 1;
+							cacheLine[cacheIndex][0] = cacheLine[cacheIndex][1];
+							
+						}
+						else
+						{
+							cacheLine[cacheIndex][0] = cacheTag;
+							cacheMiss += 1;
+						}
+						cacheLine[cacheIndex][1] = tmp;
 					}
 				}
 			}
+			
 
 			// update counter
 			if( accessType == "R" )
@@ -219,6 +122,5 @@ int main(int argc, char* argv[])
 	cout<<"Cache hits: "<<cacheHit<<endl;
 	cout<<"Cache misses: "<<cacheMiss<<endl;
 
-	free(c);
 	return 0; 
 }
