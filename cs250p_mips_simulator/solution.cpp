@@ -31,13 +31,17 @@ vector<vector<string>> _inst_operator;
 // use for noting label
 unordered_map<string,int> _label_dict;
 
+unordered_map<string, int> _register_map;
+
+void processOp(const vector<string> &registers);
+int shouldBranch(const vector<string> &registers);
 
 public :
 
 solution(ifstream &file_in,int clck_in = 10 ,bool DEBUG_in = false);
 void dbg(const string &msg);
 
-vector<int>* alu(){};
+vector<int>* alu();
 
 int mips_clock();
 
@@ -135,14 +139,123 @@ solution::solution(ifstream &file_in,int clck_in ,bool DEBUG_in){
 		}
 		_inst_operator.push_back(inst_operator);
 	}
+
+	// init register map
+	_register_map["$0"] = 0;
+	_register_map["$1"] = 1;
+	_register_map["$2"] = 2;
+	_register_map["$3"] = 3;
+	_register_map["$4"] = 4;
+	_register_map["$5"] = 5;
+	_register_map["$6"] = 6;
+	_register_map["$7"] = 7;
+
 	// check correctness
-	for(int i =0;i<_vect_lines.size();i++)
+	// for(int i =0;i<_vect_lines.size();i++)
+	// {
+	// 	cout<<_vect_lines[i]<<"|"<<_vect_types[i]<<endl;
+	// 	for(int j=0;j<_inst_operator[i].size();j++)
+	// 	{
+	// 		cout<<_inst_operator[i][j]<<" ";
+	// 	}
+	// 	cout<<"----"<<endl;
+	// }
+}
+
+vector<int>* solution::alu(){
+	int idx = 0;
+	int jumpIdx;
+	while(idx<_vect_lines.size())
 	{
-		cout<<_vect_lines[i]<<"|"<<_vect_types[i]<<endl;
-		for(int j=0;j<_inst_operator[i].size();j++)
+		switch(_vect_types[idx])
 		{
-			cout<<_inst_operator[i][j]<<" ";
+			case OPERATOR_TYPE:
+				processOp(_inst_operator[idx]);
+				idx += 1;
+				break;
+			case LABEL_TYPE:
+				processOp(_inst_operator[idx]);
+				idx += 1;
+				break;
+			case JUMP_TYPE:
+				jumpIdx = _label_dict[_inst_operator[idx][0]];
+				idx = jumpIdx;
+				break;
+			case BRANCH_TYPE:
+				jumpIdx = shouldBranch(_inst_operator[idx]);
+				if(jumpIdx >= 0)
+				{
+					idx = jumpIdx;
+				}
+				else
+				{
+					idx += 1;
+				}
+				break;
+			case END_TYPE:
+				idx += 1;
+				break;
 		}
-		cout<<"----"<<endl;
 	}
+
+	return &_vars;
+}
+
+void solution::processOp(const vector<string> &registers){
+	string op = registers[0];
+	int destIdx = _register_map[registers[1]];
+	int v0Idx = _register_map[registers[2]];
+	int v1Idx;
+	if(op != "addi")
+	{
+		v1Idx = _register_map[registers[3]];
+	}
+
+	if(op == "add")
+	{
+		_vars[destIdx]= _vars[v0Idx] + _vars[v1Idx];
+	}
+	else if(op == "addi")
+	{
+		int constant = stoi(registers[3]);
+		_vars[destIdx] = _vars[v0Idx] + constant;
+	}
+	else if(op == "sub")
+	{
+		_vars[destIdx]= _vars[v0Idx] - _vars[v1Idx];
+	}
+	else if(op == "mul")
+	{
+		_vars[destIdx]= _vars[v0Idx] * _vars[v1Idx];
+	}
+	// div
+	else
+	{
+		_vars[destIdx]= _vars[v0Idx] / _vars[v1Idx];
+	}
+
+}
+
+int solution::shouldBranch(const vector<string> &registers){
+	int jumpIdx = -1;
+	string op = registers[0];
+	int v0Idx = _register_map[registers[1]];
+	int v1Idx = _register_map[registers[2]];
+
+	bool shouldJump = false;
+	if(op == "beq")
+	{
+		shouldJump = (_vars[v0Idx] == _vars[v1Idx]);
+	}
+	else
+	{
+		shouldJump = (_vars[v0Idx] != _vars[v1Idx]);
+	}
+
+	if(shouldJump)
+	{
+		jumpIdx =_label_dict[registers[3]];
+	}
+
+	return jumpIdx;
 }

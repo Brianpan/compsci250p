@@ -41,12 +41,12 @@ int main (int argc,char* argv[]) {
 	cout << "after init" << endl;
 	vector<int>* t_vars = mips.alu();
 
-	// cout << "your answer is : " <<endl;
-	// int i = 0;
-	// for (; i < t_vars->size()-1 ; i++){
-	// 	cout << t_vars->at(i) << ",";
-	// }
-	// cout << t_vars->at(i) << endl;
+	cout << "your answer is : " <<endl;
+	int i = 0;
+	for (; i < t_vars->size()-1 ; i++){
+		cout << t_vars->at(i) << ",";
+	}
+	cout << t_vars->at(i) << endl;
 	// delete t_vars;
 }
 
