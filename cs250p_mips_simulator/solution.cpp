@@ -50,15 +50,15 @@ int mips_clock();
 
 
 int solution::mips_clock() {
-chrono::milliseconds timespan(clck);
+	chrono::milliseconds timespan(clck);
 
-this_thread::sleep_for(timespan);
-static int cycle = 0;
-if (cycle == 0 )
-	cycle = 1;
-else
-	cycle = 0;
-return cycle;
+	this_thread::sleep_for(timespan);
+	static int cycle = 0;
+	if (cycle == 0 )
+		cycle = 1;
+	else
+		cycle = 0;
+	return cycle;
 }
 
 

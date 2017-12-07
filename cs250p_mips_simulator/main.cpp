@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <thread>
-#include "solution.cpp"
+#include "solution_pipeline.cpp"
 //#include "tester.cpp"
 
 using namespace std;
