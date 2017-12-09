@@ -25,6 +25,8 @@ vector<string> _vect_lines;
 vector<int> _vect_types;
 
 vector<int> _vars;
+vector<int> _tmpVars;
+
 vector<int>* t_vars;
 vector<vector<string>> _inst_operator;
 
@@ -74,6 +76,7 @@ solution::solution(ifstream &file_in,int clck_in ,bool DEBUG_in){
 	{
 		int val = stoi(result[i]);
 		_vars.push_back(val);
+		_tmpVars.push_back(val);
 
 	}
 	regex Label("label(.*)");
@@ -164,76 +167,113 @@ solution::solution(ifstream &file_in,int clck_in ,bool DEBUG_in){
 vector<int>* solution::alu(){
 	int idx = 0;
 	int jumpIdx;
-	bool isBranch = false;
+	bool isStall = false;
 	bool isEnd = false;
 	int cycle = 0;
-	cout<<cycle<<endl;
 
-	while(idx<_vect_lines.size())
+	int piplineIdx[3];
+	piplineIdx[0] = -1;
+	piplineIdx[1] = -1;
+	piplineIdx[2] = -1;
+
+	while(true)
 	{
-
 		if(!mips_clock()) {
 			continue;
 		}
+		// transition state
+		// Branch & JUMP should not need write back
+		if( piplineIdx[1] == -1 || (_vect_types[piplineIdx[1]] != JUMP_TYPE && _vect_types[piplineIdx[1]] == BRANCH_TYPE) )
+			piplineIdx[2] = piplineIdx[1];
 
-		int old_idx = idx;
-		switch(_vect_types[idx])
+		piplineIdx[1] = piplineIdx[0];
+
+		// end should not in pipeline
+		if(!isStall)
 		{
-			case OPERATOR_TYPE:
-				processOp(_inst_operator[idx]);
-				idx += 1;
-				break;
-			case LABEL_TYPE:
-				processOp(_inst_operator[idx]);
-				idx += 1;
-				break;
-			case JUMP_TYPE:
-				jumpIdx = _label_dict[_inst_operator[idx][0]];
-				idx = jumpIdx;
-				break;
-			case BRANCH_TYPE:
-				jumpIdx = shouldBranch(_inst_operator[idx]);
-				if(jumpIdx >= 0)
-				{
-					idx = jumpIdx;
-				}
-				else
-				{
-					idx += 1;
-				}
-				// branch should stall
-				isBranch = true;
-				break;
-			case END_TYPE:
-				isEnd = true;
-				break;
-		}
-
-		cout<<_vect_lines[old_idx]<<endl;
-		if(_vect_lines[old_idx] != "end")
-		{
-
-			for(int i=0;i<7;i++)
+			if( idx < (_vect_lines.size()-1) )
 			{
-				cout<<_vars[i]<<",";
-			}
-			cout<<_vars[7];
-			cout<<endl;
-			// print
-			cycle += 1;
-			cout<<cycle<<endl;
-
-			// if is branch should stall
-			if(isBranch)
-			{
-				cycle += 1;
-				isBranch = false;
+				piplineIdx[0] = idx;
+				// should stall if JUMP or BRANCH
+				if( _vect_types[piplineIdx[0]] == JUMP_TYPE || _vect_types[piplineIdx[0]] == BRANCH_TYPE )
+				{
+					isStall = true;
+				}
 			}
 		}
+		// update isStall flag
 		else
 		{
-			break;
+			piplineIdx[0] = -1;
+			isStall = false
 		}
+
+		//
+		cout<<"clockcycle: "<<cycle<<endl;
+		// fetch step
+		if(piplineIdx[0] >= 0)
+			cout<<"Fetch : "<<_vect_lines[piplineIdx[0]]<<endl;
+		// execution step
+		if(piplineIdx[1] >= 0)
+		{
+			cout<<"Execute : "<<_vect_lines[piplineIdx[1]]<<endl;
+			switch(_vect_types[piplineIdx[1]])
+			{
+				case OPERATOR_TYPE:
+					processOp(_inst_operator[piplineIdx[1]]);
+					idx += 1;
+					break;
+				case LABEL_TYPE:
+					processOp(_inst_operator[piplineIdx[1]]);
+					idx += 1;
+					break;
+				case JUMP_TYPE:
+					jumpIdx = _label_dict[_inst_operator[piplineIdx[1]][0]];
+					idx = jumpIdx;
+					break;
+				case BRANCH_TYPE:
+					jumpIdx = shouldBranch(_inst_operator[piplineIdx[1]]);
+					if(jumpIdx >= 0)
+					{
+						idx = jumpIdx;
+					}
+					else
+					{
+						idx += 1;
+					}
+					break;
+				case END_TYPE:
+					isEnd = true;
+					break;
+			}
+
+		}
+
+		// write back step
+		if(piplineIdx[2] >= 0)
+		{
+			cout<<"Write_back : "<<_vect_lines[piplineIdx[2]]<<endl;
+			// write back to _vars
+			// print status
+			for(int i=0;i<7;i++)
+			{
+				_vars[i] = _tmpVars[i];
+				cout<<_vars[i]<<",";
+			}
+			_vars[7] = _tmpVars[7];
+			cout<<_vars[7];
+			cout<<endl;
+
+			// instruction before end finish
+			if( piplineIdx[2] == (_vect_lines.size()-2) )
+			{
+				break;
+			}
+
+			piplineIdx[2] = -1;
+		}
+
+		cycle += 1;
 	}
 
 	return &_vars;
@@ -251,25 +291,25 @@ void solution::processOp(const vector<string> &registers){
 
 	if(op == "add")
 	{
-		_vars[destIdx]= _vars[v0Idx] + _vars[v1Idx];
+		_tmpVars[destIdx]= _tmpVars[v0Idx] + _tmpVars[v1Idx];
 	}
 	else if(op == "addi")
 	{
 		int constant = stoi(registers[3]);
-		_vars[destIdx] = _vars[v0Idx] + constant;
+		_tmpVars[destIdx] = _tmpVars[v0Idx] + constant;
 	}
 	else if(op == "sub")
 	{
-		_vars[destIdx]= _vars[v0Idx] - _vars[v1Idx];
+		_tmpVars[destIdx]= _tmpVars[v0Idx] - _tmpVars[v1Idx];
 	}
 	else if(op == "mul")
 	{
-		_vars[destIdx]= _vars[v0Idx] * _vars[v1Idx];
+		_tmpVars[destIdx]= _tmpVars[v0Idx] * _tmpVars[v1Idx];
 	}
 	// div
 	else
 	{
-		_vars[destIdx]= _vars[v0Idx] / _vars[v1Idx];
+		_tmpVars[destIdx]= _tmpVars[v0Idx] / _tmpVars[v1Idx];
 	}
 
 }
@@ -283,11 +323,11 @@ int solution::shouldBranch(const vector<string> &registers){
 	bool shouldJump = false;
 	if(op == "beq")
 	{
-		shouldJump = (_vars[v0Idx] == _vars[v1Idx]);
+		shouldJump = (_tmpVars[v0Idx] == _tmpVars[v1Idx]);
 	}
 	else
 	{
-		shouldJump = (_vars[v0Idx] != _vars[v1Idx]);
+		shouldJump = (_tmpVars[v0Idx] != _tmpVars[v1Idx]);
 	}
 
 	if(shouldJump)
