@@ -183,8 +183,10 @@ vector<int>* solution::alu(){
 		}
 		// transition state
 		// Branch & JUMP should not need write back
-		if( piplineIdx[1] == -1 || (_vect_types[piplineIdx[1]] != JUMP_TYPE && _vect_types[piplineIdx[1]] == BRANCH_TYPE) )
+		if( piplineIdx[1] == -1 || (_vect_types[piplineIdx[1]] != JUMP_TYPE && _vect_types[piplineIdx[1]] != BRANCH_TYPE) )
 			piplineIdx[2] = piplineIdx[1];
+		else
+			piplineIdx[2] = -1;
 
 		piplineIdx[1] = piplineIdx[0];
 
@@ -199,16 +201,29 @@ vector<int>* solution::alu(){
 				{
 					isStall = true;
 				}
+				else
+				{
+					idx += 1;
+				}
+			}
+			else
+			{
+				if(piplineIdx[1] == -1 && piplineIdx[2] == -1)
+				{
+					break;
+				}
+				piplineIdx[0] = -1;
 			}
 		}
 		// update isStall flag
 		else
 		{
 			piplineIdx[0] = -1;
-			isStall = false
+			isStall = false;
 		}
 
 		//
+		cout<<endl;
 		cout<<"clockcycle: "<<cycle<<endl;
 		// fetch step
 		if(piplineIdx[0] >= 0)
@@ -221,11 +236,9 @@ vector<int>* solution::alu(){
 			{
 				case OPERATOR_TYPE:
 					processOp(_inst_operator[piplineIdx[1]]);
-					idx += 1;
 					break;
 				case LABEL_TYPE:
 					processOp(_inst_operator[piplineIdx[1]]);
-					idx += 1;
 					break;
 				case JUMP_TYPE:
 					jumpIdx = _label_dict[_inst_operator[piplineIdx[1]][0]];
@@ -257,11 +270,12 @@ vector<int>* solution::alu(){
 			// print status
 			for(int i=0;i<7;i++)
 			{
-				_vars[i] = _tmpVars[i];
 				cout<<_vars[i]<<",";
+				_vars[i] = _tmpVars[i];
 			}
-			_vars[7] = _tmpVars[7];
 			cout<<_vars[7];
+			_vars[7] = _tmpVars[7];
+
 			cout<<endl;
 
 			// instruction before end finish
@@ -275,6 +289,8 @@ vector<int>* solution::alu(){
 
 		cycle += 1;
 	}
+
+	cout<<"end"<<endl;
 
 	return &_vars;
 }
